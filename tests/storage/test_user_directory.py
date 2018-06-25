@@ -23,6 +23,8 @@ from tests.utils import setup_test_homeserver
 ALICE = "@alice:a"
 BOB = "@bob:b"
 BOBBY = "@bobby:a"
+ILYA = "@ilya:a"
+ILYAS = "@ilyas:a"
 
 
 class UserDirectoryStoreTestCase(unittest.TestCase):
@@ -38,7 +40,9 @@ class UserDirectoryStoreTestCase(unittest.TestCase):
             {
                 ALICE: ProfileInfo(None, "alice"),
                 BOB: ProfileInfo(None, "bob"),
-                BOBBY: ProfileInfo(None, "bobby")
+                BOBBY: ProfileInfo(None, "bobby"),
+                ILYA: ProfileInfo(None, u"Илья"),
+                ILYAS: ProfileInfo(None, u"ильяс"),
             },
         )
         yield self.store.add_users_to_public_room(
@@ -86,3 +90,28 @@ class UserDirectoryStoreTestCase(unittest.TestCase):
             })
         finally:
             self.hs.config.user_directory_search_all_users = False
+
+    @defer.inlineCallbacks
+    def test_search_user_dir_all_RU_users(self):
+        self.hs.config.user_directory_search_all_users = True
+        try:
+            for term in [u"Илья", u"илья"]:
+                r = yield self.store.search_user_dir(ALICE, term, 10)
+                self.assertFalse(r["limited"])
+                self.assertEqual(2, len(r["results"]))
+                self.assertDictEqual(r["results"][0], {
+                    "user_id": ILYA,
+                    "display_name": u"Илья",
+                    "avatar_url": None,
+                })
+                self.assertDictEqual(r["results"][1], {
+                    "user_id": ILYAS,
+                    "display_name": u"ильяс",
+                    "avatar_url": None,
+                })
+        finally:
+            self.hs.config.user_directory_search_all_users = False
+
+
+if __name__ == '__main__':
+    unittest.main()
